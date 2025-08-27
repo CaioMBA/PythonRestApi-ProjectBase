@@ -1,6 +1,7 @@
 import pkgutil
 import importlib
 import inspect
+
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.routing import APIRouter
@@ -26,11 +27,10 @@ class ControllerLoader:
         return openapi
 
     @staticmethod
-    def auto_register_controllers(app: FastAPI, package: str = "App.Controllers"):
+    def auto_register_controllers(app: FastAPI, package: str = "App.Controllers", container: AppContainer | None = None):
         package_module = importlib.import_module(package)
-        package_path = package_module.__path__
 
-        for _, module_name, _ in pkgutil.iter_modules(package_path):
+        for _, module_name, _ in pkgutil.iter_modules(package_module.__path__):
             full_module_name = f"{package}.{module_name}"
             module = importlib.import_module(full_module_name)
 
@@ -40,21 +40,5 @@ class ControllerLoader:
                     if isinstance(getattr(instance, "router", None), APIRouter):
                         app.include_router(instance.router)
 
-    @staticmethod
-    def wire_all_controllers(package: str = "App.Controllers"):
-        package_module = importlib.import_module(package)
-        package_path = package_module.__path__
-
-        modules_to_wire = []
-
-        for _, module_name, is_pkg in pkgutil.iter_modules(package_path):
-            full_module_name = f"{package}.{module_name}"
-            modules_to_wire.append(full_module_name)
-
-            if is_pkg:
-                subpackage_module = importlib.import_module(full_module_name)
-                subpackage_path = subpackage_module.__path__
-                for _, submod_name, _ in pkgutil.iter_modules(subpackage_path):
-                    modules_to_wire.append(f"{full_module_name}.{submod_name}")
-
-        AppContainer().wire(modules=modules_to_wire)
+            if container is not None:
+                container.wire(modules=[module])

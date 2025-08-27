@@ -20,8 +20,7 @@ app = FastAPI(
 app.container = container
 
 controllerLoader: ControllerLoader = ControllerLoader()
-controllerLoader.wire_all_controllers(package="App.Controllers")
-controllerLoader.auto_register_controllers(app=app, package="App.Controllers")
+controllerLoader.auto_register_controllers(app=app, package="App.Controllers", container=container)
 
 
 app.add_middleware(

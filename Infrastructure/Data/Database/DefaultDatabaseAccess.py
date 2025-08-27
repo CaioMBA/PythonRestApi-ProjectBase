@@ -49,35 +49,45 @@ class DefaultDatabaseAccess:
         self._connection_cache[key] = conn
         return conn
 
-    async def query_first(self, db: DataBaseConnectionModel, query: str, params: Optional[dict] = None) -> Optional[Any]:
+    async def query_first(self, db: DataBaseConnectionModel, query: str, params: Optional[dict] = None) -> Optional[dict]:
         conn = await self.connect(db)
         if conn is None:
             return None
 
         try:
             if db.TYPE == DataBaseType.POSTGRESQL:
-                return await conn.fetchrow(query, *params.values()) if params else await conn.fetchrow(query)
+                row = await conn.fetchrow(query, *params.values()) if params else await conn.fetchrow(query)
+                return dict(row) if row else None
             elif db.TYPE in (DataBaseType.MYSQL, DataBaseType.MARIADB, DataBaseType.SQLSERVER):
                 cursor = conn.cursor()
                 cursor.execute(query, params or {})
-                return cursor.fetchone()
+                row = cursor.fetchone()
+                if not row:
+                    return None
+                columns = [col[0] for col in cursor.description]
+                return dict(zip(columns, row))
             return None
         except Exception as e:
             print(f"[QUERY ERROR] {e}")
             return None
 
-    async def query(self, db: DataBaseConnectionModel, query: str, params: Optional[dict] = None) -> List[Any]:
+    async def query(self, db: DataBaseConnectionModel, query: str, params: Optional[dict] = None) -> List[dict]:
         conn = await self.connect(db)
         if conn is None:
             return []
 
         try:
             if db.TYPE == DataBaseType.POSTGRESQL:
-                return await conn.fetch(query, *params.values()) if params else await conn.fetch(query)
+                rows = await conn.fetch(query, *params.values()) if params else await conn.fetch(query)
+                return [dict(r) for r in rows]
             elif db.TYPE in (DataBaseType.MYSQL, DataBaseType.MARIADB, DataBaseType.SQLSERVER):
                 cursor = conn.cursor()
                 cursor.execute(query, params or {})
-                return cursor.fetchall()
+                rows = cursor.fetchall()
+                if not rows:
+                    return []
+                columns = [col[0] for col in cursor.description]
+                return [dict(zip(columns, r)) for r in rows]
             return []
         except Exception as e:
             print(f"[QUERY ERROR] {e}")

@@ -9,7 +9,6 @@ from Domain.Models.ApplicationConfigurationModels.AppSettingsModel import AppSet
     ApiConnectionModel
 from Domain.Models.ApplicationConfigurationModels.HealthReportModel import HealthReportModel, HealthEntryModel
 from Domain.Utils import Utils
-from Infrastructure.CrossCutting.InjectionConfiguration import AppContainer
 from Infrastructure.Data.Api.DefaultApiAccess import DefaultApiAccess
 from Infrastructure.Data.Database.DefaultDatabaseAccess import DefaultDatabaseAccess
 
@@ -17,10 +16,10 @@ from Infrastructure.Data.Database.DefaultDatabaseAccess import DefaultDatabaseAc
 class HealthCheckServices:
     @inject
     def __init__(self,
-                 db: DefaultDatabaseAccess = Provide[AppContainer.db_access],
-                 api: DefaultApiAccess = Provide[AppContainer.api_access],
-                 utils: Utils = Provide[AppContainer.utils],
-                 settings: AppSettingsModel = Provide[AppContainer.config]):
+                 db: DefaultDatabaseAccess = Provide["AppContainer.db_access"],
+                 api: DefaultApiAccess = Provide["AppContainer.api_access"],
+                 utils: Utils = Provide["AppContainer.utils"],
+                 settings: AppSettingsModel = Provide["AppContainer.config"]):
         self._db = db
         self._api = api
         self._utils = utils
@@ -32,7 +31,7 @@ class HealthCheckServices:
         self_start = datetime.now()
         self_duration = datetime.now() - self_start
         entries["SELF"] = HealthEntryModel(
-            data={},
+            data=None,
             description="Self check passed",
             duration=str(self_duration),
             exception=None,
@@ -54,7 +53,7 @@ class HealthCheckServices:
     async def _check_all_databases(self) -> Dict[str, HealthEntryModel]:
         db_checks: Dict[str, HealthEntryModel] = {}
         for db in self._settings.DATABASE_CONNECTIONS:
-            db_checks[db.DATABASE_ID] = await self._db_check(db)
+            db_checks[f'DB-{db.DATABASE_ID}'] = await self._db_check(db)
         return db_checks
 
     async def _db_check(self, database: DataBaseConnectionModel) -> HealthEntryModel:
@@ -62,7 +61,7 @@ class HealthCheckServices:
         try:
             response = await self._db.query_first(
                 database,
-                "SELECT 1",
+                "SELECT 1 AS Test",
                 None
             )
             return HealthEntryModel(
@@ -75,7 +74,7 @@ class HealthCheckServices:
             )
         except Exception as e:
             return HealthEntryModel(
-                data={},
+                data=None,
                 description=str(e.args),
                 duration=str(datetime.now() - start_time),
                 exception=str(e),
@@ -88,7 +87,7 @@ class HealthCheckServices:
     async def _check_all_apis(self) -> Dict[str, HealthEntryModel]:
         api_checks: Dict[str, HealthEntryModel] = {}
         for api in self._settings.API_CONNECTIONS:
-            api_checks[api.API_ID] = await self._api_check(api)
+            api_checks[f'API-{api.API_ID}'] = await self._api_check(api)
         return api_checks
 
     async def _api_check(self, api: ApiConnectionModel) -> HealthEntryModel:
@@ -104,8 +103,15 @@ class HealthCheckServices:
                     Body=None
                 )
             )
+            data = None
+            if response and response.content:
+                if "application/json" in response.headers.get("content-type", "").lower():
+                    try:
+                        data = response.json()
+                    except ValueError:
+                        data = None
             return HealthEntryModel(
-                data=response.json(),
+                data=data,
                 description="API health check",
                 duration=str(datetime.now() - start_time),
                 exception=None,
@@ -114,7 +120,7 @@ class HealthCheckServices:
             )
         except Exception as e:
             return HealthEntryModel(
-                data={},
+                data=None,
                 description=str(e.args),
                 duration=str(datetime.now() - start_time),
                 exception=str(e),

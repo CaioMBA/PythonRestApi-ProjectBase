@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 
 class HealthEntryModel(BaseModel):
-    data: dict
+    data: dict | None
     description: Optional[str] = None
     duration: str
     exception: Optional[str]= None

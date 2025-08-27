@@ -35,7 +35,7 @@ class DefaultApiAccess:
             headers["Content-Type"] = "application/json"
             content = request.Body
 
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, http2=True) as client:
             try:
                 response = await client.request(method, url, headers=headers, content=content)
                 response.raise_for_status()
