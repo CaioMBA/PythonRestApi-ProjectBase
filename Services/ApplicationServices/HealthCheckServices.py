@@ -62,11 +62,12 @@ class HealthCheckServices:
             response = await self._db.query_first(
                 database,
                 "SELECT 1 AS Test",
-                None
+                None,
+                True
             )
             return HealthEntryModel(
                 data=response,
-                description="Database connection check",
+                description="Database connection successful",
                 duration=str(datetime.now() - start_time),
                 exception=None,
                 status="Healthy" if response else "Unhealthy",
@@ -75,7 +76,7 @@ class HealthCheckServices:
         except Exception as e:
             return HealthEntryModel(
                 data=None,
-                description=str(e.args),
+                description="Database connection failed",
                 duration=str(datetime.now() - start_time),
                 exception=str(e),
                 status="Unhealthy",
@@ -112,7 +113,7 @@ class HealthCheckServices:
                         data = None
             return HealthEntryModel(
                 data=data,
-                description="API health check",
+                description="API health check successful",
                 duration=str(datetime.now() - start_time),
                 exception=None,
                 status="Healthy" if response.status_code == 200 else "Unhealthy",
@@ -121,7 +122,7 @@ class HealthCheckServices:
         except Exception as e:
             return HealthEntryModel(
                 data=None,
-                description=str(e.args),
+                description="API health check failed",
                 duration=str(datetime.now() - start_time),
                 exception=str(e),
                 status="Unhealthy",

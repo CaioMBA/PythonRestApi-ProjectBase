@@ -23,7 +23,7 @@ class DefaultDatabaseAccess:
     def _normalize_conn_key(db: DataBaseConnectionModel):
         return f"{db.TYPE}:{db.CONNECTION_STRING}"
 
-    async def connect(self, db: DataBaseConnectionModel):
+    async def connect(self, db: DataBaseConnectionModel, raise_on_error: bool = False) -> Optional[Any]:
         key = self._normalize_conn_key(db)
         if key in self._connection_cache:
             return self._connection_cache[key]
@@ -43,14 +43,16 @@ class DefaultDatabaseAccess:
             else:
                 raise ValueError(f"Unsupported DB: {db.TYPE}")
         except Exception as e:
+            if raise_on_error:
+                raise ConnectionError(f"Connection to database failed: {e}")
             print(f"[DB ERROR] {e}")
             return None
 
         self._connection_cache[key] = conn
         return conn
 
-    async def query_first(self, db: DataBaseConnectionModel, query: str, params: Optional[dict] = None) -> Optional[dict]:
-        conn = await self.connect(db)
+    async def query_first(self, db: DataBaseConnectionModel, query: str, params: Optional[dict] = None, raise_on_error: Optional[bool] = False) -> Optional[dict]:
+        conn = await self.connect(db, raise_on_error)
         if conn is None:
             return None
 
@@ -68,11 +70,13 @@ class DefaultDatabaseAccess:
                 return dict(zip(columns, row))
             return None
         except Exception as e:
+            if raise_on_error:
+                raise RuntimeError(f"Query execution failed: {e}")
             print(f"[QUERY ERROR] {e}")
             return None
 
-    async def query(self, db: DataBaseConnectionModel, query: str, params: Optional[dict] = None) -> List[dict]:
-        conn = await self.connect(db)
+    async def query(self, db: DataBaseConnectionModel, query: str, params: Optional[dict] = None, raise_on_error: Optional[bool] = False) -> List[dict]:
+        conn = await self.connect(db, raise_on_error)
         if conn is None:
             return []
 
@@ -90,6 +94,8 @@ class DefaultDatabaseAccess:
                 return [dict(zip(columns, r)) for r in rows]
             return []
         except Exception as e:
+            if raise_on_error:
+                raise RuntimeError(f"Query execution failed: {e}")
             print(f"[QUERY ERROR] {e}")
             return []
 
