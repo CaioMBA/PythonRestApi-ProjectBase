@@ -11,7 +11,7 @@ class HealthController(ControllerBase):
     def __init__(self):
         super().__init__()
 
-        @self.router.get("/", response_model=HealthReportModel)
+        @self.router.get("", response_model=HealthReportModel)
         @inject
         async def root(service: HealthCheckServices = Depends(Provide[AppContainer.health_check_service])) -> HealthReportModel:
             return await service.check()

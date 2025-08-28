@@ -8,7 +8,7 @@ class ControllerBase:
         if prefix is None:
             prefix = f"/{class_name}"
         else:
-            prefix = "/" + prefix.strip("/")
+            prefix = f"/{prefix.strip("/")}"
         if tags is None:
             tags = [class_name]
         else:
